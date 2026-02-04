@@ -1,0 +1,30 @@
+{
+    "DIO_TISA_AOM": 0,
+    "DIO_READ_TT_GATE": 1,
+    "DIO_MW_PATH_SW": 2,
+    "DIO_MW_OUTPUT_SW": 3,
+    "DIO_GREEN": 4,
+    "DIO_RF_PATH_SW": 5,
+    "DIO_TT_NEXT_HIST": 6,
+    "DIO_TOPTICA_READ_AOM": 7,
+
+    "DO_superk_shutter": 0,
+    "DO_sideread_TTL": 1,
+
+    "AO_gas_tune_valve": 0,
+    "AO_read_aom_vco": 1,
+    "AO_read_aom_att": 2,
+    "AO_TiSa_piezo": 3,
+    "AO_TDI_piezo": 4,
+    "AO_sideread_aom_att": 5,
+    "AVOLT6": 6,
+    "AVOLT7": 7,
+    "AVOLT8": 8,
+    "AVOLT9": 9,
+    "AVOLT10": 10,
+    "AVOLT11": 11,
+    "AVOLT12": 12,
+    "AVOLT13": 13,
+    "AVOLT14": 14,
+    "AVOLT15": 15
+}
