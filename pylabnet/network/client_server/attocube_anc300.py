@@ -1,6 +1,6 @@
 from pylabnet.network.core.service_base import ServiceBase
 from pylabnet.network.core.client_base import ClientBase
-from pylabnet.hardware.nanopositioners.attocube import ANC300
+from pylabnet.hardware.nanopositioners.attocube_anc300 import ANC300
 
 
 class Service(ServiceBase):

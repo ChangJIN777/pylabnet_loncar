@@ -32,6 +32,7 @@ class Wrap:
         self.log = LogHandler(logger=logger)
 
         # Reference to tagger
+        tagger = TT.createTimeTagger()
         self._tagger = tagger
 
         # Log device ID information to demonstrate that connection indeed works

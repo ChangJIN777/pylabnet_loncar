@@ -728,11 +728,13 @@ def launch(**kwargs):
     """ Launches the full nanopositioner control + GUI script """
 
     # Unpack and assign parameters
+
     logger = kwargs['logger']
     clients = kwargs['clients']
-    config = load_script_config(script='mcs2_anc300_control',
+    config = load_script_config(script='anc300_control',
                                 config=kwargs['config'],
                                 logger=logger)
+    logger.info(f"Config used for this launch: {kwargs}")
     # nanopos_client = find_client(clients=clients, settings=config, client_type='mcs2')
     attocube_client = find_client(clients=clients, settings=config, client_type='anc300')
 

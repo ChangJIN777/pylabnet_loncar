@@ -146,6 +146,7 @@ class Launcher:
             if p.match(client_name) != None:
                 continue
 
+            self.logger.info(f'Found client {client_name} in client dict, attempting to add as connector')
             # TODO: This try-loop is necessary to catch instances for scripts that are launched with without port and IP
             # This is still a bug and under investigation.
             try:
@@ -417,6 +418,9 @@ class Launcher:
         spec.loader.exec_module(mod)
 
         self.logger.info(f'Launching script {self.name}')
+
+        # debugging statement to check what clients are being passed to the script
+        # self.logger.info(f'Passing the following clients to the script: {self.clients}')
 
         mod.launch(
             logger=self.logger,

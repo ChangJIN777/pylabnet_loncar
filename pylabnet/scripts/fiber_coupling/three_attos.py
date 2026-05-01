@@ -626,8 +626,8 @@ def launch(**kwargs):
     config = load_script_config(script='mcs2_anc300_control',
                                 config=kwargs['config'],
                                 logger=logger)
-    attocube_client_obj = find_client(clients=clients, settings=config, client_type='anc300', client_config='l500_attocubes_obj')
-    attocube_client_fr = find_client(clients=clients, settings=config, client_type='anc300', client_config='l500_attocubes_front_rear')
+    attocube_client_obj = find_client(clients=clients, settings=config, client_type='anc300', client_config='hu_attocubes_obj')
+    attocube_client_fr = find_client(clients=clients, settings=config, client_type='anc300', client_config='hu_attocubes_fr')
 
     gui_client = 'positioner_control_3attos'
 

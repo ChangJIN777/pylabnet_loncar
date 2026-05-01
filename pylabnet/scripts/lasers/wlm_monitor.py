@@ -653,16 +653,28 @@ class Channel:
         if self.lock:
             try:
                 if self.ao is not None:
-                    if self._min_voltage <= self.current_voltage + self.pid.cv * self._gain <= self._max_voltage:
-                        self.current_voltage += self.pid.cv * self._gain
-                    elif self.current_voltage + self.pid.cv * self._gain < self._min_voltage:
-                        self.current_voltage = self._min_voltage
-                    else:
-                        self.current_voltage = self._max_voltage
-                    self.ao['client'].set_ao_voltage(
-                        ao_channel=self.ao['channel'],
-                        voltages=[self.current_voltage]
-                    )
+                    # if self._min_voltage <= self.current_voltage + self.pid.cv * self._gain <= self._max_voltage:
+                    #     self.current_voltage += self.pid.cv * self._gain
+                    # elif self.current_voltage + self.pid.cv * self._gain < self._min_voltage:
+                    #     self.current_voltage = self._min_voltage
+                    # else:
+                    #     self.current_voltage = self._max_voltage
+                    # self.ao['client'].set_ao_voltage(
+                    #     ao_channel=self.ao['channel'],
+                    #     voltages=[self.current_voltage]
+                    # )
+                    v_set = (self._min_voltage + self._max_voltage) / 2
+                    try:
+                        self.ao['client'].set_ao_voltage(
+                            ao_channel=self.ao['channel'],
+                            voltages=[v_set]
+                        )
+                    except TypeError:
+                        self.ao['client'].set_ao_voltage(
+                            ao_channel=self.ao['channel'],
+                            voltage=v_set
+                        )
+                    self.current_voltage = v_set
             except EOFError:
                 self.ao = None
 

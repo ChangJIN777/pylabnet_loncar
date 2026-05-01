@@ -24,6 +24,7 @@ from pylabnet.utils.pulsed_experiments.pulsed_experiment import PulsedExperiment
 
 from pylabnet.scripts.pulsemaster.pulseblock_constructor import PulseblockConstructor, PulseSpecifier
 from pylabnet.scripts.pulsemaster.pulsemaster_customwidget import DictionaryTableModel, AddPulseblockPopup
+from pylabnet.scripts.pulsemaster.ODMR import MyPopup
 
 
 class PulseMaster:
@@ -48,8 +49,9 @@ class PulseMaster:
         self.exp_config_dict = dict()
 
         # Instanciate HD
-        dev_id = self.config_dict['HDAWG_dev_id']
-        self.hd = Driver(dev_id, logger=self.log)
+        dev_id = self.config_dict['device_id']
+        interface = self.config_dict['interface']
+        self.hd = Driver(dev_id, interface=interface, logger=self.log)
 
         # Get microwave client
         self.mw_client = mw_source_client
@@ -1144,6 +1146,42 @@ class PulseMaster:
     def _add_row_to_var_table(self):
         self.variable_table_model.datadict.append(["", ""])
         self.variable_table_model.layoutChanged.emit()
+
+    def add_odmr_sequence(self):
+        self.add_odmr_popup = MyPopup()
+        self.add_odmr_popup.setObjectName('add_odmr_popup')
+        self.add_odmr_popup.setGeometry(QRect(100, 100, 400, 200))
+
+        self.add_odmr_popup.global_hbox = QVBoxLayout()
+        self.add_odmr_popup.setLayout(self.add_odmr_popup.global_hbox)
+
+        # Setup of box.
+        self.add_odmr_popup.form_groupbox = QGroupBox("Add ODMR Sequence")
+        self.add_odmr_popup.form_layout = QFormLayout()
+
+        self.add_odmr_popup.odmr_fstart_field = QLineEdit()
+        self.add_odmr_popup.odmr_fstop_field = QLineEdit()
+
+        self.add_odmr_popup.form_layout.addRow(QLabel("Start Frequency:"), self.add_odmr_popup.odmr_fstart_field)
+        self.add_odmr_popup.form_layout.addRow(QLabel("Stop Frequency:"), self.add_odmr_popup.odmr_fstop_field)
+        self.add_odmr_popup.form_groupbox.setLayout(self.add_odmr_popup.form_layout)
+
+        # Set Layout
+        self.add_odmr_popup.setLayout(self.add_odmr_popup.form_layout)
+
+        # Add to global hbox
+        self.add_odmr_popup.global_hbox.addWidget(self.add_odmr_popup.form_groupbox)
+
+        # Add button
+        add_odmr_button = QPushButton('Add ODMR Sequence')
+        add_odmr_button.setObjectName("add_odmr_button")
+        self.add_odmr_popup.global_hbox.addWidget(add_odmr_button)
+
+        # Apply CSS stylesheet
+        self.gui.apply_stylesheet()
+
+        # Shot the pop-up
+        self.add_odmr_popup.show()
 
     def add_pulseblock(self):
         self.add_pb_popup = AddPulseblockPopup()
