@@ -24,6 +24,7 @@ import rpyc
 import threading
 import os
 import platform
+import ssl
 
 
 class GenericServer:
@@ -72,7 +73,7 @@ class GenericServer:
                         'sync_request_timeout': 300
                     },
                     authenticator=rpyc.utils.authenticators.SSLAuthenticator(
-                        key, key
+                        key, key, ssl_version=ssl.PROTOCOL_TLS
                     )
                 )
 

@@ -14,5 +14,5 @@ class Service(ServiceBase):
 
 class Client(ClientBase, WavemeterInterface):
 
-    def get_wavelength(self, channel=1, units="Frequency(THz)"):
+    def get_wavelength(self, channel=1, units="Frequency (THz)"):
         return self._service.exposed_get_wavelength(channel, units)
