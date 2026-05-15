@@ -46,9 +46,12 @@ def launch(**kwargs):
     #         config = {}
 
     for channel, trig_level in config['triggers'].items():
-        tagger.setTriggerLevel(int(channel), float(trig_level))
-        kwargs['logger'].info(f'Set the trigger for Ch {int(channel)} to {float(trig_level)} V.')
-        kwargs['logger'].info(f'Trigger for Ch {int(channel)} is now read at {tagger.getTriggerLevel(int(channel))} V.')
+        try:
+            tagger.setTriggerLevel(int(channel), float(trig_level))
+            kwargs['logger'].info(f'Set the trigger for Ch {int(channel)} to {float(trig_level)} V.')
+            kwargs['logger'].info(f'Trigger for Ch {int(channel)} is now read at {tagger.getTriggerLevel(int(channel))} V.')
+        except AttributeError:
+            kwargs['logger'].warn(f'Ch {int(channel)}: setTriggerLevel not supported (virtual tagger), skipping.')
 
     if 'dead_times' in config:
         for channel, dead_time in config['dead_times'].items():

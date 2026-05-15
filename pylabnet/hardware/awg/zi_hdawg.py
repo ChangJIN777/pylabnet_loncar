@@ -104,7 +104,7 @@ class Driver():
         api_level = 6  # Maximum API level supported for all instruments.
 
         # Create an API session to the Data Server.
-        self.daq = zhinst.core.ziDAQServer(server_address, server_port, api_level)
+        self.daq = zhinst.ziPython.ziDAQServer(server_address, server_port, api_level)
         # Establish a connection between Data Server and Device.
         self.daq.connectDevice(device_id, interface)
 

@@ -790,6 +790,7 @@ def launch_device_server(server, dev_config, log_ip, log_port, server_port, debu
         # SSH in
         ssh = paramiko.SSHClient()
         ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
             ssh.connect(host_ip, username=hostname, password=decouple.config('LOCALHOST_PW'))
             msg_str = f'Successfully connected via SSH to {hostname}@{host_ip}'
@@ -797,12 +798,21 @@ def launch_device_server(server, dev_config, log_ip, log_port, server_port, debu
                 print(msg_str)
             else:
                 logger.info(msg_str)
-        except TimeoutError:
-            msg_str = f'Failed to setup SSH connection to {hostname}@{host_ip}'
+        except Exception as e:
+            msg_str = f'Failed to setup SSH connection to {hostname}@{host_ip}: {e}'
             if logger is None:
                 print(msg_str)
             else:
                 logger.error(msg_str)
+            return None, None
+
+        if ssh._transport is None or not ssh._transport.is_active():
+            msg_str = f'SSH transport not active for {hostname}@{host_ip}'
+            if logger is None:
+                print(msg_str)
+            else:
+                logger.error(msg_str)
+            return None, None
 
         # Set command arguments
         python_path = ssh_params['python_path']

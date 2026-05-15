@@ -41,6 +41,7 @@ class WlmMonitor:
         self.display_pts = display_pts
         self.threshold = threshold
         self.log = LogHandler(logger_client)
+        self.log.info(f'wlm_client connected to {wlm_client._host}:{wlm_client._port}')
 
         # Instantiate gui
         self.gui = Window(
@@ -222,13 +223,20 @@ class WlmMonitor:
             self.clear_channel(channel)
 
     def run(self):
-        """Runs the WlmMonitor
+        """Runs one iteration of the WlmMonitor loop.
 
-        Can be stopped using the pause() method
+        Called repeatedly from the launch() while-loop. Each call:
+          1. Pulls the latest setpoint and lock state from the GUI.
+          2. Reads the wavemeter, updates PID, and drives the AO output.
+          3. Pushes updated curves and values back to the GUI.
+        Can be stopped using the pause() method.
         """
 
+        # Step 1: read current GUI state (setpoint spinboxes, lock checkboxes)
         self._get_gui_data()
+        # Step 2: update all channels — read wavemeter, run PID, set voltage
         self._update_channels()
+        # Step 3: flush all GUI widget updates to the screen
         self.gui.force_update()
 
     def zero_voltage(self, channel):
@@ -378,59 +386,54 @@ class WlmMonitor:
         )
 
     def _update_channels(self):
-        """ Updates all channels + displays
+        """Updates all channels and refreshes the GUI display.
 
-        Called continuously inside run() method to refresh WLM data and output on GUI
+        Called each iteration of run(). For every channel:
+          - Applies any setpoint override pushed by update_parameters() (e.g. from a remote client).
+          - Reads the latest frequency from the wavemeter.
+          - Runs the PID and, if locked, drives the AO output voltage.
+          - Pushes frequency, setpoint, voltage, and error curves to the GUI.
         """
 
         for index, channel in enumerate(self.channels):
 
-            # Check for override
+            # If update_parameters() set a new setpoint programmatically, push it to the
+            # GUI spinbox now so the GUI reflects the script-controlled value.
             if channel.setpoint_override:
                 self.widgets['sp'][index].setValue(channel.setpoint_override)
                 channel.setpoint_override = 0
 
-            # Update data with the new wavelength
+            # Read current frequency from wavemeter and run PID / voltage output.
             channel.update(self.wlm_client.get_wavelength(channel.number))
 
-            # Update frequency
+            # Update the frequency trace and numeric display.
             self.widgets['curve'][4 * index].setData(channel.data)
             self.widgets['freq'][index].setValue(channel.data[-1])
 
-            # Update setpoints
+            # Update the setpoint trace.
             self.widgets['curve'][4 * index + 1].setData(channel.sp_data)
 
-            # Update the setpoint to GUI directly if it has been changed
-            # if channel.setpoint_override:
-
-            #     # Tell GUI to pull data provided by script and overwrite direct GUI input
-            #     self.widgets['sp'][index].setValue(channel.setpoint)
-
-            # If the lock has been updated, override the GUI
-            # if channel.lock_override:
-            #     self.widgets['lock'][index].setChecked(channel.lock)
-
-            # Set the error boolean (true if the lock is active and we are outside the error threshold)
+            # Light up the error indicator if locked and outside the lock threshold.
             if channel.lock and np.abs(channel.data[-1] - channel.setpoint) > self.threshold:
                 self.widgets['error_status'][index].setChecked(True)
             else:
                 self.widgets['error_status'][index].setChecked(False)
 
-            # Now update lock + voltage plots
+            # Update the voltage trace (commanded piezo voltage) and error trace (freq error × gain).
             self.widgets['curve'][4 * index + 2].setData(channel.voltage)
             self.widgets['voltage'][index].setValue(channel.voltage[-1])
             self.widgets['curve'][4 * index + 3].setData(channel.error)
             self.widgets['error'][index].setValue(channel.error[-1])
 
     def _get_gui_data(self):
-        """ Updates setpoint and lock parameters with data pulled from GUI
+        """Snapshot the current GUI state into each channel object.
 
-        Does not overwrite the script setpoints and locks, but stores the GUI values for comparison based on context.
-        See Channel.update() method for behavior on how script chooses whether to use internal values or GUI values
+        Stores the current spinbox and checkbox values so that Channel.update()
+        can detect whether the user has changed them since the last iteration.
+        Does not overwrite the internal setpoint/lock directly — Channel.update()
+        decides whether to adopt the GUI value based on whether it has changed.
         """
         for index, channel in enumerate(self.channels):
-
-            # Pull the current value from the GUI
             channel.gui_setpoint = self.widgets['sp'][index].value()
             channel.gui_lock = self.widgets['lock'][index].isChecked()
 
@@ -596,56 +599,44 @@ class Channel:
         self.sp_data = np.ones(display_pts) * self.data[-1]
 
     def update(self, wavelength):
-        """
-        Updates the data, setpoints, and all locks
+        """Run one update cycle for this channel.
 
-        :param wavelength: (float) current wavelength
+        Called every loop iteration. Appends the new wavemeter reading,
+        updates the setpoint from the GUI if it changed, feeds data into the
+        PID, and — if locked — computes and applies a corrective voltage.
+
+        :param wavelength: (float) current wavemeter reading in THz
         """
 
+        # Append latest wavemeter reading; drop the oldest point to keep array length fixed.
         self.data = np.append(self.data[1:], wavelength)
 
-        # Pick which setpoint to use
-        # If the setpoint override is on, this means we need to try and set the GUI value to self.setpoint
-        # if self.setpoint_override:
-
-        #     # Check if the GUI has actually caught up
-        #     if self.setpoint == self.gui_setpoint:
-        #         self.setpoint_override = False
-
-        #     # Otherwise, the GUI still hasn't implemented the setpoint prescribed by update_parameters()
-
-        # # If setpoint override is off, this means the GUI caught up to our last update_parameters() call, and we
-        # # should refrain from updating the value until we get a new value from the GUI
-        # else:
-
-        # Check if the GUI has changed, and if so, update the setpoint in the script to match
+        # Setpoint tracking: only adopt a new value from the GUI when the user
+        # has actually moved the spinbox (detected by comparing to the previous snapshot).
+        # This prevents the GUI's initial value from silently overwriting a setpoint
+        # pushed by update_parameters() from a remote client.
         if self.gui_setpoint != self.prev_gui_setpoint:
             self.setpoint = copy.deepcopy(self.gui_setpoint)
+            # Log the new setpoint to metadata for record-keeping.
             metadata = {f'{self.name}_laser_setpoint': self.setpoint}
             self.log.update_metadata(**metadata)
 
-            # Otherwise the GUI is static AND parameters haven't been updated so we don't change the setpoint at all
-
-        # Store the latest GUI setpoint
+        # Remember this iteration's GUI setpoint so we can detect changes next iteration.
         self.prev_gui_setpoint = copy.deepcopy(self.gui_setpoint)
         self.sp_data = np.append(self.sp_data[1:], self.setpoint)
 
-        # Now deal with pid stuff
+        # Feed the current setpoint into the PID (setpoint=0 is a safe default when unset).
         self.pid.set_parameters(setpoint=0 if self.setpoint is None else self.setpoint)
 
-        # Implement lock
-        # Set process variable
+        # Supply the PID with the last `memory` wavemeter readings as the process variable.
+        # Using a window of recent points smooths out wavemeter noise in the integral term.
         self.pid.set_pv(pv=self.data[len(self.data) - self.memory:])
-        # Set control variable
+        # Compute the PID control variable (cv) from the current error.
         self.pid.set_cv()
 
-        # See logic for setpoint above
-        # if self.lock_override:
-        #     if self.lock == self.gui_lock:
-        #         self.lock_override = False
-        # else:
+        # Lock state tracking: adopt GUI toggle changes immediately, and log the transition.
         if self.gui_lock != self.prev_gui_lock:
-            self.log.info(f"udpate lock to {self.gui_lock}")
+            self.log.info(f"Lock state changed to: {self.gui_lock}")
             self.lock = copy.deepcopy(self.gui_lock)
 
         self.prev_gui_lock = copy.deepcopy(self.gui_lock)
@@ -653,29 +644,30 @@ class Channel:
         if self.lock:
             try:
                 if self.ao is not None:
-                    # if self._min_voltage <= self.current_voltage + self.pid.cv * self._gain <= self._max_voltage:
-                    #     self.current_voltage += self.pid.cv * self._gain
-                    # elif self.current_voltage + self.pid.cv * self._gain < self._min_voltage:
-                    #     self.current_voltage = self._min_voltage
-                    # else:
-                    #     self.current_voltage = self._max_voltage
-                    # self.ao['client'].set_ao_voltage(
-                    #     ao_channel=self.ao['channel'],
-                    #     voltages=[self.current_voltage]
-                    # )
-                    v_set = (self._min_voltage + self._max_voltage) / 2
+                    # Increment voltage by PID correction scaled by gain.
+                    # pid.cv is the raw PID output (frequency error); gain converts it to volts.
+                    new_voltage = self.current_voltage + self.pid.cv * self._gain
+                    # Clamp to the allowed range to protect the laser piezo from over-voltage.
+                    if new_voltage < self._min_voltage:
+                        self.current_voltage = self._min_voltage
+                    elif new_voltage > self._max_voltage:
+                        self.current_voltage = self._max_voltage
+                    else:
+                        self.current_voltage = new_voltage
+                    # Write the updated voltage to the AO output.
+                    # Two call signatures are handled for cross-client compatibility.
                     try:
                         self.ao['client'].set_ao_voltage(
                             ao_channel=self.ao['channel'],
-                            voltages=[v_set]
+                            voltages=[self.current_voltage]
                         )
                     except TypeError:
                         self.ao['client'].set_ao_voltage(
                             ao_channel=self.ao['channel'],
-                            voltage=v_set
+                            voltage=self.current_voltage
                         )
-                    self.current_voltage = v_set
             except EOFError:
+                # Connection to AO client lost; disable AO to avoid repeated errors.
                 self.ao = None
 
         # Update voltage and error data
@@ -683,7 +675,11 @@ class Channel:
         self.error = np.append(self.error[1:], self.pid.error * self._gain)
 
     def zero_voltage(self):
-        """Zeros the voltage (if applicable)"""
+        """Centers the piezo voltage to the midpoint of the allowed range.
+
+        'Zero' here means the midpoint between min_voltage and max_voltage,
+        giving the PID equal headroom to push voltage up or down.
+        """
 
         try:
             if self.ao is not None:
@@ -765,7 +761,10 @@ class Channel:
                 }
 
                 try:
+                    # Read actual piezo voltage from the laser so the PID starts
+                    # from the real hardware state rather than assuming zero.
                     self.current_voltage = self.ao['client'].voltage()
+                    self.log.info(f'Initialized ao for Channel {self.number} with voltage {self.current_voltage}')
                 except:
                     self.current_voltage = 0
             except KeyError:

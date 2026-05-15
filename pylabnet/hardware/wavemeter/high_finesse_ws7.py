@@ -15,6 +15,8 @@ class Driver(WavemeterInterface):
 
         # Log
         self.log = LogHandler(logger=logger)
+        msg_str = 'Initializing High-Finesse Wavemeter WS7 driver on the master computer'
+        self.log.info(msg_str)
 
         # Load WLM DLL
         try:

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(conda run *)",
+      "Bash(\"C:\\\\Program Files\\\\Git\\\\usr\\\\bin\\\\openssl.exe\" req -new -x509 -days 365 -nodes -out pylabnet.pem -keyout pylabnet.pem -subj \"/CN=pylabnet\")",
+      "Bash(copy pylabnet.pem \"C:\\\\Windows\\\\System32\\\\pylabnet.pem\")",
+      "Bash(ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no User@192.168.50.105 \"echo SSH_OK\")",
+      "Bash(ping -n 3 192.168.50.105)",
+      "Bash(\"/c/Users/User/anaconda3/envs/pylabnet/python.exe\" /c/Users/User/Documents/check_paths.py)"
+    ]
+  }
+}

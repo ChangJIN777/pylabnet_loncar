@@ -1,5 +1,6 @@
 import rpyc
 import os
+import ssl
 from socket import timeout
 from ssl import SSLError
 from pylabnet.utils.helper_methods import get_os, UnsupportedOSException
@@ -73,7 +74,8 @@ class ClientBase:
                     port=self._port,
                     config={'allow_public_attrs': True},
                     keyfile=key,
-                    certfile=key
+                    certfile=key,
+                    ssl_version=ssl.PROTOCOL_TLS
                 )
             self._service = self._connection.root
 

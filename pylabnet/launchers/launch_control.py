@@ -1070,6 +1070,9 @@ class WriteStream:
     def write(self, text):
         self.queue.put(text)
 
+    def flush(self):
+        pass
+
 
 class UpdateReceiver(QtCore.QObject):
     """ Process to run in separate thread to monitor for logger updates"""
